@@ -48,7 +48,8 @@ class CliffEnv:
         self.print_grid()
 
     def reset(self):
-        self.pos = 0
+        self.x = 0
+        self.y = 0
         self.steps = 0
         self.done = False
 
@@ -61,12 +62,12 @@ class CliffEnv:
         else:
             self.load_config()
 
-        return self.pos
+        return [self.x, self.y]
 
     def print_grid(self):
         for i in range(self.n):
             for j in range(self.m):
-                if i * self.m + j == self.pos:
+                if i == self.x and j == self.y:
                     print("A", end=" ")
                 elif i * self.m + j in self.holes:
                     print("X", end=" ")
@@ -78,45 +79,24 @@ class CliffEnv:
 
     def step(self, action):
         """
-        return (pos, reward, done)
+        return (x,y, reward, done)
         """
         self.steps += 1
-        if self.steps >= self.maximum_steps:
-            self.done = True
-            return (self.pos, self.failure_reward, self.done)
-        reward = 0
-        x, y = self.pos // self.m, self.pos % self.m
-        if action == 0:
-            if x == 0:
-                reward = self.failure_reward
-                self.done = True
-                return (self.pos, reward, self.done)
-            self.pos -= self.m
-        elif action == 1:
-            if x == self.n - 1:
-                reward = self.failure_reward
-                self.done = True
-                return (self.pos, reward, self.done)
-            self.pos += self.m
-        elif action == 2:
-            if y == 0:
-                reward = self.failure_reward
-                self.done = True
-                return (self.pos, reward, self.done)
-            self.pos -= 1
-        elif action == 3:
-            if y == self.m - 1:
-                reward = self.failure_reward
-                self.done = True
-                return (self.pos, reward, self.done)
-            self.pos += 1
-        if self.pos in self.holes:
-            reward = self.failure_reward
-            self.done = True
-        elif self.pos == self.n * self.m - 1:
-            reward = self.success_reward
-            self.done = True
-        return (self.pos, reward, self.done)
+        x = self.x
+        y = self.y
+        moves = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        x += moves[action][0]
+        y += moves[action][1]
+        self.x = x
+        self.y = y
+        if x < 0 or x >= self.n or y < 0 or y >= self.m:
+            return [x, y], self.failure_reward, True
+        if x * self.m + y in self.holes:
+            return [x, y], self.failure_reward, True
+        if x * self.m + y == self.n * self.m - 1:
+            return [x, y], self.success_reward, True
+
+        return [x, y], 0, False
 
     def available_actions(self):
         x, y = self.pos // self.m, self.pos % self.m
@@ -187,5 +167,5 @@ class CliffEnv:
 
 
 if __name__ == "__main__":
-    env = CliffEnv(n=2, m=2, hole_rate=0.5)
+    env = CliffEnv(n=6, m=6, hole_rate=0)
     env.save_config()

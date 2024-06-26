@@ -1,11 +1,12 @@
 import random
-import gym
+import os
 import numpy as np
 import collections
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 from Environment import CliffEnv
+from datetime import datetime
 import matplotlib.pyplot as plt
 
 
@@ -109,59 +110,113 @@ class DQN:
         self.count += 1
 
 
-lr = 1e-3
-num_episodes = 2000
-hidden_dim = 64
-gamma = 0.98
-epsilon = 0.01
-target_update = 10
-buffer_size = 10000
-minimal_size = 500
-batch_size = 32
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def get_next_run_id(path):
+    if not os.path.exists(path):
+        return 0
+    else:
+        return (
+            max(
+                [
+                    int(x)
+                    for x in os.listdir(path)
+                    if os.path.isdir(os.path.join(path, x)) and x.isdigit()
+                ]
+                + [0]
+            )
+            + 1
+        )
+
+
+def train(
+    state_dim,
+    action_dim,
+    lr,
+    num_episodes,
+    hidden_dim,
+    gamma,
+    epsilon,
+    target_update,
+    buffer_size,
+    minimal_size,
+    batch_size,
+    device,
+    map_path,
+):
+    env = CliffEnv(load_path=map_path)
+    replay_buffer = ReplayBuffer(buffer_size)
+    agent = DQN(
+        state_dim, hidden_dim, action_dim, lr, gamma, epsilon, target_update, device
+    )
+
+    return_list = []
+    for i in range(10):
+        with tqdm(total=int(num_episodes / 10), desc="Iteration %d" % i) as pbar:
+            for i_episode in range(int(num_episodes / 10)):
+                episode_return = 0
+                state = env.reset()
+                done = False
+                while not done:
+                    action = agent.take_action(state)
+                    next_state, reward, done = env.step(action)
+                    replay_buffer.add(state, action, reward, next_state, done)
+                    state = next_state
+                    episode_return += reward
+                    # 当buffer数据的数量超过一定值后,才进行Q网络训练
+                    if replay_buffer.size() > minimal_size:
+                        b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)
+                        transition_dict = {
+                            "states": b_s,
+                            "actions": b_a,
+                            "next_states": b_ns,
+                            "rewards": b_r,
+                            "dones": b_d,
+                        }
+                        agent.update(transition_dict)
+                return_list.append(episode_return)
+                if (i_episode + 1) % 10 == 0:
+                    pbar.set_postfix(
+                        {
+                            "episode": "%d" % (num_episodes / 10 * i + i_episode + 1),
+                            "return": "%.3f" % np.mean(return_list[-10:]),
+                        }
+                    )
+                pbar.update(1)
+
+    save_path = os.path.join(map_path, str(get_next_run_id(map_path)))
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    torch.save(
+        agent.q_net.state_dict(),
+        os.path.join(save_path, "q_net.pth"),
+    )
+    avg_return_list = np.convolve(return_list, np.ones(10) / 10, mode="valid")
+    plt.plot(avg_return_list)
+    plt.xlabel("Episodes")
+    plt.ylabel("Return")
+    plt.savefig(os.path.join(save_path, "return.png"))
+
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+set_seed(0)
 
-map_path = "/home/ZhangXingYi/codes/CLIFF/map/8x8/0"
-env = CliffEnv(load_path=map_path)
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
-replay_buffer = ReplayBuffer(buffer_size)
-state_dim = 1
-action_dim = 4  # 四种动作
-agent = DQN(
-    state_dim, hidden_dim, action_dim, lr, gamma, epsilon, target_update, device
+train(
+    state_dim=2,
+    action_dim=4,
+    lr=1e-3,
+    num_episodes=2000,
+    hidden_dim=64,
+    gamma=0.98,
+    epsilon=0.01,
+    target_update=10,
+    buffer_size=10000,
+    minimal_size=500,
+    batch_size=32,
+    device=device,
+    map_path="/home/ZhangXingYi/codes/CLIFF/map/6x6/0",
 )
-
-return_list = []
-for i in range(10):
-    with tqdm(total=int(num_episodes / 10), desc="Iteration %d" % i) as pbar:
-        for i_episode in range(int(num_episodes / 10)):
-            episode_return = 0
-            state = env.reset()
-            done = False
-            while not done:
-                action = agent.take_action(state)
-                next_state, reward, done = env.step(action)
-                replay_buffer.add([state], action, reward, [next_state], done)
-                state = next_state
-                episode_return += reward
-                # 当buffer数据的数量超过一定值后,才进行Q网络训练
-                if replay_buffer.size() > minimal_size:
-                    b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)
-                    transition_dict = {
-                        "states": b_s,
-                        "actions": b_a,
-                        "next_states": b_ns,
-                        "rewards": b_r,
-                        "dones": b_d,
-                    }
-                    agent.update(transition_dict)
-            return_list.append(episode_return)
-            if (i_episode + 1) % 10 == 0:
-                pbar.set_postfix(
-                    {
-                        "episode": "%d" % (num_episodes / 10 * i + i_episode + 1),
-                        "return": "%.3f" % np.mean(return_list[-10:]),
-                    }
-                )
-            pbar.update(1)
