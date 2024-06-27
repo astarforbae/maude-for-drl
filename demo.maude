@@ -1,0 +1,30 @@
+--- 核心是描述动作和地图
+--- 能够判断悬崖，终点，能够迁移就行了
+--- 状态只有数字，用(i, j) 表示状态，从(1, 1)开始
+
+mod CLIFF is 
+    protecting NAT .
+    including MODEL-CHECKER .
+    including LTL-SIMPLIFIER .
+    op _,_ : Nat Nat -> State [ctor] .
+
+    vars x y : Nat .
+    var S : State .
+    var P : Prop .
+
+    op init : -> State .
+    eq init = (1, 1) .
+
+    op BeyondBoundary : -> Prop .
+    op InHole : -> Prop .
+    op Success : -> Prop .
+    ceq (x, y) |= BeyondBoundary =  true if (x > 4) or (x == 0) or (y == 0) or (y > 4) .
+    ceq (x, y) |= InHole = true if x == 1 and y == 2 .
+    ceq (x, y) |= Success = true if x == 2 and y == 2 .
+    eq S |= P = false [owise] .
+
+
+    rl [1-1] : (1, 1) => (2, 1) .
+    rl [1-2] : (1, 2) => (1, 2) .
+    rl [2-1] : (2, 1) => (2, 2) .
+endm 
