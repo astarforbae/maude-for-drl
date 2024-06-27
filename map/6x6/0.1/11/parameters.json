@@ -1,1 +1,15 @@
-{"state_dim": 2, "action_dim": 4, "lr": 0.0001, "num_episodes": 20000, "hidden_dim": 128, "gamma": 0.99, "epsilon": 0.1, "target_update": 10, "buffer_size": 100000, "minimal_size": 5000, "batch_size": 32, "device": "cpu", "map_path": "/home/ZhangXingYi/codes/CLIFF/map/6x6/0.1"}
+{
+  "state_dim": 2,
+  "action_dim": 4,
+  "lr": 0.0001,
+  "num_episodes": 20000,
+  "hidden_dim": 128,
+  "gamma": 0.99,
+  "epsilon": 0.1,
+  "target_update": 10,
+  "buffer_size": 100000,
+  "minimal_size": 5000,
+  "batch_size": 32,
+  "device": "cpu",
+  "map_path": "/home/ZhangXingYi/codes/CLIFF/map/6x6/0.1"
+}

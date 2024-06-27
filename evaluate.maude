@@ -1,0 +1,19 @@
+load /home/ZhangXingYi/local/maude/model-checker.maude .
+load /home/ZhangXingYi/codes/CLIFF/maude_files/4x4/3.maude .
+red modelCheck((1, 1), [] <> Success) .
+red modelCheck((1, 2), [] <> Success) .
+red modelCheck((1, 3), [] <> Success) .
+red modelCheck((1, 4), [] <> Success) .
+red modelCheck((2, 1), [] <> Success) .
+red modelCheck((2, 2), [] <> Success) .
+red modelCheck((2, 3), [] <> Success) .
+red modelCheck((2, 4), [] <> Success) .
+red modelCheck((3, 1), [] <> Success) .
+red modelCheck((3, 2), [] <> Success) .
+red modelCheck((3, 3), [] <> Success) .
+red modelCheck((3, 4), [] <> Success) .
+red modelCheck((4, 1), [] <> Success) .
+red modelCheck((4, 2), [] <> Success) .
+red modelCheck((4, 3), [] <> Success) .
+red modelCheck((4, 4), [] <> Success) .
+quit .
