@@ -28,9 +28,10 @@ class CliffEnv:
         m=20,
         hole_rate=0.2,
         success_reward=100,
-        failure_reward=-100,
-        maximum_steps=100,
+        failure_reward=-50,
+        maximum_steps=25,
         load_path=None,
+        load_grid_from_text=None,
     ) -> None:
         self.n = n
         self.m = m
@@ -39,6 +40,7 @@ class CliffEnv:
         self.failure_reward = failure_reward
         self.maximum_steps = maximum_steps
         self.load_path = load_path
+        self.load_grid_from_text = load_grid_from_text
 
         self.reset()
         attr_dict = self.__dict__.copy()
@@ -54,11 +56,19 @@ class CliffEnv:
         self.done = False
 
         if not self.load_path:
-            self.holes = np.random.choice(
-                np.arange(1, self.n * self.m - 1),
-                int((self.n * self.m - 2) * self.hole_rate),
-                replace=False,
-            )
+            if not self.load_grid_from_text:
+                self.holes = np.random.choice(
+                    np.arange(1, self.n * self.m - 1),
+                    int((self.n * self.m - 2) * self.hole_rate),
+                    replace=False,
+                )
+            else:
+                self.holes = []
+                with open(self.load_grid_from_text, "r") as f:
+                    for i, line in enumerate(f.readlines()):
+                        for j, c in enumerate(line):
+                            if c == "X":
+                                self.holes.append(i * self.m + j)
         else:
             self.load_config()
 
@@ -84,7 +94,7 @@ class CliffEnv:
         self.steps += 1
         x = self.x
         y = self.y
-        moves = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         x += moves[action][0]
         y += moves[action][1]
         self.x = x
@@ -132,7 +142,7 @@ class CliffEnv:
             os.getcwd(),
             "map",
             str(self.n) + "x" + str(self.m),
-            str(self.hole_rate),
+            str(self.hole_rate) if self.load_grid_from_text is None else "custom",
         )  # 当前文件夹下的datas文件夹
         # 创建文件夹
         if not os.path.exists(self.save_dir):
@@ -143,7 +153,7 @@ class CliffEnv:
         with open(os.path.join(self.save_dir, "grid.txt"), "w") as f:
             for i in range(self.n):
                 for j in range(self.m):
-                    if i * self.m + j == self.pos:
+                    if i == self.x and j == self.y:
                         f.write("A")
                     elif i * self.m + j in self.holes:
                         f.write("X")
@@ -167,5 +177,7 @@ class CliffEnv:
 
 
 if __name__ == "__main__":
-    env = CliffEnv(n=6, m=6, hole_rate=0)
+    env = CliffEnv(
+        load_grid_from_text="/home/ZhangXingYi/codes/CLIFF/test.txt", n=6, m=6
+    )
     env.save_config()

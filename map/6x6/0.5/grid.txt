@@ -1,6 +1,0 @@
-A.XXX.
-X.X...
-X..X..
-X..XX.
-.XXX.X
-.XXX.B

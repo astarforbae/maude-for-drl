@@ -1,12 +1,12 @@
 import random
 import os
+import json
 import numpy as np
 import collections
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 from Environment import CliffEnv
-from datetime import datetime
 import matplotlib.pyplot as plt
 
 
@@ -35,6 +35,7 @@ class Qnet(torch.nn.Module):
         super(Qnet, self).__init__()
         self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
         self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
+        # self.fc3 = torch.nn.Linear(hidden_dim, action_dim)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))  # 隐藏层使用ReLU激活函数
@@ -68,13 +69,16 @@ class DQN:
         self.count = 0  # 计数器,记录更新次数
         self.device = device
 
+    def take_action_deterministic(self, state):  # 确定性策略采取动作
+        state = torch.tensor([state], dtype=torch.float).to(self.device)
+        action = self.q_net(state).argmax().item()
+        return action
+
     def take_action(self, state):  # epsilon-贪婪策略采取动作
         if np.random.random() < self.epsilon:
             action = np.random.randint(self.action_dim)
         else:
-            state = torch.tensor([state], dtype=torch.float).to(self.device)
-            action = self.q_net(state).argmax().item()
-            # print(action)
+            action = self.take_action_deterministic(state)
         return action
 
     def update(self, transition_dict):
@@ -133,6 +137,49 @@ def get_next_run_id(path):
         )
 
 
+def print_action_table(agent, env, device):
+    action_map = {
+        0: "↑",
+        1: "↓",
+        2: "←",
+        3: "→",
+    }
+    for i in range(env.n):
+        for j in range(env.m):
+            if i * env.m + j in env.holes:
+                print("X", end="")
+                continue
+            action = (
+                agent.q_net(torch.tensor([i, j], dtype=torch.float).to(device))
+                .argmax()
+                .item()
+            )
+            print(action_map[action], end="")
+        print()
+
+
+def print_action_table_to_file(agent, env, device, file_path):
+    action_map = {
+        0: "↑",
+        1: "↓",
+        2: "←",
+        3: "→",
+    }
+    with open(file_path, "w") as f:
+        for i in range(env.n):
+            for j in range(env.m):
+                if i * env.m + j in env.holes:
+                    f.write("X")
+                    continue
+                action = (
+                    agent.q_net(torch.tensor([i, j], dtype=torch.float).to(device))
+                    .argmax()
+                    .item()
+                )
+                f.write(action_map[action])
+            f.write("\n")
+
+
 def train(
     state_dim,
     action_dim,
@@ -148,6 +195,21 @@ def train(
     device,
     map_path,
 ):
+    params = {
+        "state_dim": state_dim,
+        "action_dim": action_dim,
+        "lr": lr,
+        "num_episodes": num_episodes,
+        "hidden_dim": hidden_dim,
+        "gamma": gamma,
+        "epsilon": epsilon,
+        "target_update": target_update,
+        "buffer_size": buffer_size,
+        "minimal_size": minimal_size,
+        "batch_size": batch_size,
+        "device": device,
+        "map_path": map_path,
+    }
     env = CliffEnv(load_path=map_path)
     replay_buffer = ReplayBuffer(buffer_size)
     agent = DQN(
@@ -157,6 +219,7 @@ def train(
     return_list = []
     for i in range(10):
         with tqdm(total=int(num_episodes / 10), desc="Iteration %d" % i) as pbar:
+            cnt = 0
             for i_episode in range(int(num_episodes / 10)):
                 episode_return = 0
                 state = env.reset()
@@ -178,6 +241,8 @@ def train(
                             "dones": b_d,
                         }
                         agent.update(transition_dict)
+                if reward == env.success_reward:
+                    cnt += 1
                 return_list.append(episode_return)
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix(
@@ -187,7 +252,8 @@ def train(
                         }
                     )
                 pbar.update(1)
-
+            print_action_table(agent, env, device)
+    # 保存模型参数
     save_path = os.path.join(map_path, str(get_next_run_id(map_path)))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -195,28 +261,43 @@ def train(
         agent.q_net.state_dict(),
         os.path.join(save_path, "q_net.pth"),
     )
+
+    # 保存参数
+    with open(os.path.join(save_path, "parameters.json"), "w") as f:
+        json.dump(params, f)
+    # 画return图
     avg_return_list = np.convolve(return_list, np.ones(10) / 10, mode="valid")
     plt.plot(avg_return_list)
     plt.xlabel("Episodes")
     plt.ylabel("Return")
     plt.savefig(os.path.join(save_path, "return.png"))
+    # 打印在每个位置上的动作
+    print_action_table_to_file(
+        agent, env, device, os.path.join(save_path, "action.txt")
+    )
+    print(json.dumps(params, indent=4))
+    print("Save to %s" % save_path)
 
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-set_seed(0)
+def eval(model_path=None):
+    assert model_path is not None and os.path.exists(model_path)
+    with open(os.path.join(model_path, "parameters.json"), "r") as f:
+        params = json.load(f)
 
-train(
-    state_dim=2,
-    action_dim=4,
-    lr=1e-3,
-    num_episodes=2000,
-    hidden_dim=64,
-    gamma=0.98,
-    epsilon=0.01,
-    target_update=10,
-    buffer_size=10000,
-    minimal_size=500,
-    batch_size=32,
-    device=device,
-    map_path="/home/ZhangXingYi/codes/CLIFF/map/6x6/0",
-)
+    # 加载地图
+    env = CliffEnv(load_path=params["map_path"])
+    state_dim = params["state_dim"]
+    action_dim = params["action_dim"]
+    lr = params["lr"]
+    hidden_dim = params["hidden_dim"]
+    gamma = params["gamma"]
+    epsilon = params["epsilon"]
+    target_update = params["target_update"]
+
+    # 加载模型
+    device = torch.device(params["device"])
+    agent = DQN(
+        state_dim, hidden_dim, action_dim, lr, gamma, epsilon, target_update, device
+    )
+    agent.q_net.load_state_dict(torch.load(os.path.join(model_path, "q_net.pth")))
+    # TODO eval 要干什么
