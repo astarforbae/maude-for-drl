@@ -273,7 +273,7 @@ def train(
     plt.savefig(os.path.join(save_path, "return.png"))
     # 打印在每个位置上的动作
     print_action_table_to_file(
-        agent, env, device, os.path.join(save_path, "action.txt")
+        agent, env, device, os.path.join(save_path, "actions.txt")
     )
     print(json.dumps(params, indent=4))
     print("Save to %s" % save_path)

@@ -177,7 +177,12 @@ class CliffEnv:
 
 
 if __name__ == "__main__":
+    # env = CliffEnv(
+    # load_grid_from_text="/home/ZhangXingYi/codes/CLIFF/test.txt", n=6, m=6
+    # )
     env = CliffEnv(
-        load_grid_from_text="/home/ZhangXingYi/codes/CLIFF/test.txt", n=6, m=6
+        n=4,
+        m=4,
+        hole_rate=0.2,
     )
     env.save_config()

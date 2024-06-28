@@ -128,4 +128,4 @@ def generate(agent_path):
         wt("endm")
 
 
-generate("/home/ZhangXingYi/codes/CLIFF/map/4x4/0.3/6")
+generate("/home/ZhangXingYi/codes/CLIFF/map/6x6/m4/2")

@@ -1,5 +1,5 @@
 load /home/ZhangXingYi/local/maude/model-checker.maude .
-load /home/ZhangXingYi/codes/CLIFF/maude_files/6x6/5.maude .
+load /home/ZhangXingYi/codes/CLIFF/maude_files/6x6/8.maude .
 red modelCheck((1, 1), [] <> Success) .
 red modelCheck((1, 2), [] <> Success) .
 red modelCheck((1, 3), [] <> Success) .
