@@ -21,7 +21,7 @@ red modelCheck(init,  ~ <> Success) .
 # 验证 - 从所有状态出发
 
 # 自动化脚本
-./eval.sh /home/ZhangXingYi/codes/CLIFF/maude_files/4x4/3.maude /home/ZhangXingYi/local/maude/model-checker.maude /home/ZhangXingYi/local/maude/maude.linux64
+./eval.sh /home/ZhangXingYi/codes/CLIFF/maude_files/6x6/5.maude /home/ZhangXingYi/local/maude/model-checker.maude /home/ZhangXingYi/local/maude/maude.linux64
 ```
 
 
